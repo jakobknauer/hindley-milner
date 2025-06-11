@@ -1,5 +1,6 @@
 pub type Var = String;
 
+#[derive(Debug)]
 pub enum Expr {
     Var(Var),
     App(Box<Expr>, Box<Expr>),
