@@ -37,3 +37,26 @@ impl core::ops::BitOr<Binding> for &Ctxt {
         Ctxt(bindings)
     }
 }
+
+impl std::fmt::Display for Ctxt {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Ctxt(bindings) = self;
+
+        if bindings.len() == 0 {
+            write!(f, "")
+        } else {
+            write!(f, "{}", bindings[0])?;
+            for binding in bindings.iter().skip(1) {
+                write!(f, ", {}", binding)?;
+            }
+            Ok(())
+        }
+    }
+}
+
+impl std::fmt::Display for Binding {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Binding(x, sigma) = self;
+        write!(f, "{} : {}", x, sigma)
+    }
+}

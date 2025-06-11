@@ -1,19 +1,37 @@
-use crate::expr::Expr::{Abs, App, Var};
+use crate::{
+    ctxt::{Binding, Ctxt},
+    expr::Expr,
+    types::Mono,
+};
 
 mod algorithm_j;
 mod ctxt;
 mod expr;
 mod types;
-mod typing;
 
+#[allow(nonstandard_style)]
 fn main() {
-    let e = Abs(
-        "x".to_string(),
-        Box::new(Abs(
-            "f".to_string(),
-            Box::new(App(Box::new(Var("f".to_string())), Box::new(Var("x".to_string())))),
-        )),
+    let plus = Expr::var("plus");
+    let double = Expr::abs("x", Expr::app(Expr::app(plus.clone(), Expr::var("x")), Expr::var("x")));
+
+    let quadruple = Expr::r#let(
+        "double",
+        double.clone(),
+        Expr::abs(
+            "n",
+            Expr::app(Expr::var("double"), Expr::app(Expr::var("double"), Expr::var("n"))),
+        ),
     );
-    let sigma = algorithm_j::infer(&e);
-    println!("{sigma:#?}");
+
+    let int = Mono::App("Int".to_string(), vec![]);
+
+    let Gamma = &Ctxt::new()
+        | Binding(
+            "plus".to_string(),
+            types::Poly::Mono(Mono::arrow(int.clone(), Mono::arrow(int.clone(), int))),
+        );
+
+    let sigma = algorithm_j::infer(&quadruple, &Gamma).unwrap();
+
+    println!("{Gamma} ⊢ {quadruple} : {sigma}");
 }

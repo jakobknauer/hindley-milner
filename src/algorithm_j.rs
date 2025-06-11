@@ -4,9 +4,9 @@ use crate::ctxt::{Binding, Ctxt};
 use crate::expr::Expr;
 use crate::types::{Mono, Poly};
 
-pub fn infer(e: &Expr) -> Option<Poly> {
+#[allow(nonstandard_style)]
+pub fn infer(e: &Expr, Gamma: &Ctxt) -> Option<Poly> {
     let mut algorithm = Algorithm::new();
-    let Gamma = Ctxt::new();
     let tau = algorithm.infer(e, &Gamma)?;
     let tau = algorithm.canonicalize(&tau);
     let tau = tau.generalize(&Gamma);
@@ -26,6 +26,7 @@ impl Algorithm {
         }
     }
 
+    #[allow(nonstandard_style)]
     pub fn infer(&mut self, e: &Expr, Gamma: &Ctxt) -> Option<Mono> {
         match e {
             Expr::Var(x) => Gamma.get(x).map(|sigma| self.inst(sigma)),
@@ -33,13 +34,13 @@ impl Algorithm {
                 let tau0 = self.infer(e0, Gamma)?;
                 let tau1 = self.infer(e1, Gamma)?;
                 let tau_prime = Mono::Var(self.new_var());
-                self.unify(&tau0, &Mono::new_arrow(tau1, tau_prime.clone()));
+                self.unify(&tau0, &Mono::arrow(tau1, tau_prime.clone()));
                 Some(tau_prime)
             }
             Expr::Abs(x, e) => {
                 let tau = Mono::Var(self.new_var());
                 let tau_prime = self.infer(e, &(Gamma | Binding(x.clone(), Poly::Mono(tau.clone()))))?;
-                Some(Mono::new_arrow(tau, tau_prime))
+                Some(Mono::arrow(tau, tau_prime))
             }
             Expr::Let(x, e0, e1) => {
                 let tau = self.infer(e0, Gamma)?;
@@ -66,6 +67,7 @@ impl Algorithm {
         format!("x{}", self.counter)
     }
 
+    #[allow(nonstandard_style)]
     fn unify(&mut self, tau1: &Mono, tau2: &Mono) {
         let tau1 = self.canonicalize(tau1);
         let tau2 = self.canonicalize(tau2);
@@ -90,6 +92,7 @@ impl Algorithm {
         }
     }
 
+    #[allow(nonstandard_style)]
     fn canonicalize(&mut self, tau: &Mono) -> Mono {
         match tau {
             Mono::Var(_) => match self.union_find.get(tau) {
