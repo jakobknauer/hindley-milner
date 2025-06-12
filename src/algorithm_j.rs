@@ -7,9 +7,9 @@ use crate::types::{Mono, Poly};
 #[allow(nonstandard_style)]
 pub fn infer(e: &Expr, Gamma: &Ctxt) -> Option<Poly> {
     let mut algorithm = Algorithm::new();
-    let tau = algorithm.infer(e, &Gamma)?;
+    let tau = algorithm.infer(e, Gamma)?;
     let tau = algorithm.canonicalize(&tau);
-    let tau = tau.generalize(&Gamma);
+    let tau = tau.generalize(Gamma);
     Some(tau)
 }
 
@@ -91,10 +91,10 @@ impl Algorithm {
     }
 
     #[allow(nonstandard_style)]
-    fn canonicalize(&mut self, tau: &Mono) -> Mono {
+    fn canonicalize(&self, tau: &Mono) -> Mono {
         match tau {
             Mono::Var(alpha) => match self.union_find.get(alpha) {
-                Some(tau) => self.canonicalize(&tau.clone()),
+                Some(tau) => self.canonicalize(tau),
                 None => tau.clone(),
             },
             Mono::App(C, taus) => Mono::App(C.clone(), taus.iter().map(|tau| self.canonicalize(tau)).collect()),
