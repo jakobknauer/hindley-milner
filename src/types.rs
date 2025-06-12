@@ -40,9 +40,9 @@ impl Mono {
     }
 
     #[allow(nonstandard_style)]
-    pub fn replace(&self, alpha: &str, beta: &str) -> Mono {
+    pub fn replace(&self, alpha: &str, beta: &Mono) -> Mono {
         match self {
-            Mono::Var(gamma) if gamma == alpha => Mono::Var(beta.into()),
+            Mono::Var(gamma) if gamma == alpha => beta.clone(),
             Mono::Var(_) => self.clone(),
             Mono::App(C, taus) => Mono::App(C.clone(), taus.iter().map(|tau| tau.replace(alpha, beta)).collect()),
         }
@@ -57,15 +57,6 @@ impl Poly {
     pub fn free(&self) -> HashSet<TypeVar> {
         let Poly(alphas, tau) = self;
         &tau.free() - &alphas
-    }
-
-    pub fn replace(&self, alpha: &str, beta: &str) -> Poly {
-        let Poly(alphas, tau) = self;
-        if alphas.contains(alpha) {
-            Poly(alphas.clone(), tau.clone())
-        } else {
-            Poly(alphas.clone(), tau.replace(alpha, beta))
-        }
     }
 }
 
