@@ -1,14 +1,12 @@
-use crate::{
-    ctxt::{Binding, Ctxt},
-    expr::Expr,
-    types::{Mono, Poly},
-};
-
 mod algorithm_j;
 mod ctxt;
 mod expr;
 mod parse;
 mod types;
+
+use ctxt::{Binding, Ctxt};
+use expr::Expr;
+use types::{Mono, Poly};
 
 #[allow(nonstandard_style)]
 fn main() {

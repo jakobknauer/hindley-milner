@@ -2,39 +2,44 @@ use std::collections::HashMap;
 
 use crate::ctxt::{Binding, Ctxt};
 use crate::expr::Expr;
-use crate::types::{Mono, Poly};
+use crate::types::{Mono, Poly, TypeVar};
 
 #[allow(nonstandard_style)]
 pub fn infer(e: &Expr, Gamma: &Ctxt) -> Option<Poly> {
-    let mut algorithm = Algorithm::new();
-    let tau = algorithm.infer(e, Gamma)?;
-    let tau = algorithm.canonicalize(&tau);
-    let tau = tau.generalize(Gamma);
+    let mut algorithm = AlgorithmJ::new();
+    let tau = algorithm
+        .infer(e, Gamma)?
+        .canonicalize(&algorithm.aliases)
+        .generalize(Gamma);
     Some(tau)
 }
 
-struct Algorithm {
+struct AlgorithmJ {
     counter: u32,
-    union_find: HashMap<String, Mono>,
+    aliases: HashMap<TypeVar, Mono>,
 }
 
-impl Algorithm {
-    pub fn new() -> Algorithm {
-        Algorithm {
+impl AlgorithmJ {
+    pub fn new() -> AlgorithmJ {
+        AlgorithmJ {
             counter: 0,
-            union_find: HashMap::new(),
+            aliases: HashMap::new(),
         }
     }
 
     #[allow(nonstandard_style)]
     pub fn infer(&mut self, e: &Expr, Gamma: &Ctxt) -> Option<Mono> {
         match e {
-            Expr::Var(x) => Gamma.get(x).map(|sigma| self.inst(sigma)),
+            Expr::Var(x) => {
+                let sigma = Gamma.get(x)?;
+                let tau = sigma.clone().inst(self.new_vars());
+                Some(tau)
+            }
             Expr::App(e0, e1) => {
                 let tau0 = self.infer(e0, Gamma)?;
                 let tau1 = self.infer(e1, Gamma)?;
                 let tau_prime = self.new_var();
-                self.unify(&tau0, &Mono::arrow(tau1, tau_prime.clone()));
+                self.unify(tau0, Mono::arrow(tau1, tau_prime.clone()));
                 Some(tau_prime)
             }
             Expr::Abs(x, e) => {
@@ -44,18 +49,12 @@ impl Algorithm {
                 Some(Mono::arrow(tau, tau_prime))
             }
             Expr::Let(x, e0, e1) => {
-                let tau = self.infer(e0, Gamma)?;
-                let tau = self.canonicalize(&tau);
-                let tau = tau.generalize(&Gamma);
-                self.infer(e1, &(Gamma | Binding(x.clone(), tau)))
+                let tau = self.infer(e0, Gamma)?.canonicalize(&self.aliases).generalize(Gamma);
+                let Gamma_prime = Gamma | Binding(x.clone(), tau);
+                let tau_prime = self.infer(e1, &Gamma_prime);
+                tau_prime
             }
         }
-    }
-
-    fn inst(&mut self, Poly(alphas, tau): &Poly) -> Mono {
-        alphas
-            .iter()
-            .fold(tau.clone(), |tau, alpha| tau.replace(alpha, &self.new_var()))
     }
 
     // TODO: create actual fresh variables
@@ -65,39 +64,26 @@ impl Algorithm {
         Mono::Var(alpha)
     }
 
-    #[allow(nonstandard_style)]
-    fn unify(&mut self, tau1: &Mono, tau2: &Mono) {
-        let tau1 = self.canonicalize(tau1);
-        let tau2 = self.canonicalize(tau2);
-
-        if tau1 == tau2 {
-            return;
-        }
-
-        match (&tau1, &tau2) {
-            (Mono::App(C1, taus1), Mono::App(C2, taus2)) if C1 == C2 && taus1.len() == taus2.len() => {
-                for (tau1, tau2) in taus1.iter().zip(taus2) {
-                    self.unify(tau1, &tau2);
-                }
-            }
-            (Mono::Var(alpha), _) => {
-                self.union_find.insert(alpha.clone(), tau2);
-            }
-            (_, Mono::Var(alpha)) => {
-                self.union_find.insert(alpha.clone(), tau1);
-            }
-            _ => panic!("Cannot unify types"),
-        }
+    fn new_vars(&mut self) -> impl IntoIterator<Item = Mono> {
+        std::iter::from_fn(|| Some(self.new_var()))
     }
 
     #[allow(nonstandard_style)]
-    fn canonicalize(&self, tau: &Mono) -> Mono {
-        match tau {
-            Mono::Var(alpha) => match self.union_find.get(alpha) {
-                Some(tau) => self.canonicalize(tau),
-                None => tau.clone(),
-            },
-            Mono::App(C, taus) => Mono::App(C.clone(), taus.iter().map(|tau| self.canonicalize(tau)).collect()),
+    fn unify(&mut self, tau1: Mono, tau2: Mono) {
+        let tau1 = tau1.canonicalize(&self.aliases);
+        let tau2 = tau2.canonicalize(&self.aliases);
+
+        match (tau1, tau2) {
+            (tau1, tau2) if tau1 == tau2 => (),
+            (Mono::App(C1, taus1), Mono::App(C2, taus2)) if C1 == C2 && taus1.len() == taus2.len() => {
+                for (tau1, tau2) in taus1.into_iter().zip(taus2) {
+                    self.unify(tau1, tau2);
+                }
+            }
+            (Mono::Var(alpha), tau) | (tau, Mono::Var(alpha)) => {
+                self.aliases.insert(alpha, tau);
+            }
+            (tau1, tau2) => panic!("cannot unify canonicalized types {tau1} and {tau2}"),
         }
     }
 }

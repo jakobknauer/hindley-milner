@@ -22,6 +22,7 @@ impl Ctxt {
         let Ctxt(bindings) = self;
         bindings
             .iter()
+            .rev()
             .filter_map(|Binding(y, sigma)| (x == y).then_some(sigma))
             .next()
     }

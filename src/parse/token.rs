@@ -62,7 +62,7 @@ impl<I: Iterator<Item = char>> Iterator for Tokenizer<I> {
             self.consume()
         }
 
-        Some(match self.current()? {
+        let token = match self.current()? {
             '.' => self.consume_and_return(Dot),
             'λ' => self.consume_and_return(Lambda),
             '=' => self.consume_and_return(Equals),
@@ -75,12 +75,14 @@ impl<I: Iterator<Item = char>> Iterator for Tokenizer<I> {
                     "lambda" => Lambda,
                     "let" => Let,
                     "in" => In,
-                    _ if token.chars().nth(0).unwrap().is_ascii_uppercase() => CapVar(token),
+                    _ if token.chars().next()?.is_ascii_uppercase() => CapVar(token),
                     _ => Var(token),
                 }
             }
 
             c => panic!("unexpected character '{c}'"),
-        })
+        };
+
+        Some(token)
     }
 }

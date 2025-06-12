@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::ctxt::Ctxt;
 
@@ -22,7 +22,7 @@ impl Mono {
     }
 
     #[allow(nonstandard_style)]
-    pub fn nullary(C: impl Into<String>) -> Mono {
+    pub fn nullary(C: impl Into<TypeFunc>) -> Mono {
         Mono::App(C.into(), Vec::new())
     }
 
@@ -34,17 +34,28 @@ impl Mono {
     }
 
     #[allow(nonstandard_style)]
-    pub fn generalize(&self, Gamma: &Ctxt) -> Poly {
+    pub fn generalize(self, Gamma: &Ctxt) -> Poly {
         let alphas = &self.free() - &Gamma.free();
-        Poly(alphas, self.clone())
+        Poly(alphas, self)
     }
 
     #[allow(nonstandard_style)]
-    pub fn replace(&self, alpha: &str, beta: &Mono) -> Mono {
+    pub fn canonicalize(self, aliases: &HashMap<TypeVar, Mono>) -> Mono {
+        match self {
+            Mono::Var(ref alpha) => match aliases.get(alpha) {
+                Some(tau) => tau.clone().canonicalize(aliases),
+                None => self,
+            },
+            Mono::App(C, taus) => Mono::App(C, taus.into_iter().map(|tau| tau.canonicalize(aliases)).collect()),
+        }
+    }
+
+    #[allow(nonstandard_style)]
+    pub fn replace(self, alpha: &str, beta: &Mono) -> Mono {
         match self {
             Mono::Var(gamma) if gamma == alpha => beta.clone(),
-            Mono::Var(_) => self.clone(),
-            Mono::App(C, taus) => Mono::App(C.clone(), taus.iter().map(|tau| tau.replace(alpha, beta)).collect()),
+            Mono::Var(_) => self,
+            Mono::App(C, taus) => Mono::App(C, taus.into_iter().map(|tau| tau.replace(alpha, beta)).collect()),
         }
     }
 }
@@ -57,6 +68,14 @@ impl Poly {
     pub fn free(&self) -> HashSet<TypeVar> {
         let Poly(alphas, tau) = self;
         &tau.free() - &alphas
+    }
+
+    pub fn inst(self, new_vars: impl IntoIterator<Item = Mono>) -> Mono {
+        let Poly(alphas, tau) = self;
+        alphas
+            .into_iter()
+            .zip(new_vars)
+            .fold(tau, |tau, (alpha, beta)| tau.replace(&alpha, &beta))
     }
 }
 
