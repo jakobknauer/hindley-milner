@@ -15,7 +15,7 @@ pub fn infer(e: &Expr, Gamma: &Ctxt) -> Option<Poly> {
 
 struct Algorithm {
     counter: u32,
-    union_find: HashMap<Mono, Mono>,
+    union_find: HashMap<String, Mono>,
 }
 
 impl Algorithm {
@@ -80,11 +80,11 @@ impl Algorithm {
                     self.unify(tau1, &tau2);
                 }
             }
-            (Mono::Var(_), _) => {
-                self.union_find.insert(tau1, tau2);
+            (Mono::Var(alpha), _) => {
+                self.union_find.insert(alpha.clone(), tau2);
             }
-            (_, Mono::Var(_)) => {
-                self.union_find.insert(tau2, tau1);
+            (_, Mono::Var(alpha)) => {
+                self.union_find.insert(alpha.clone(), tau1);
             }
             _ => panic!("Cannot unify types"),
         }
@@ -93,7 +93,7 @@ impl Algorithm {
     #[allow(nonstandard_style)]
     fn canonicalize(&mut self, tau: &Mono) -> Mono {
         match tau {
-            Mono::Var(_) => match self.union_find.get(tau) {
+            Mono::Var(alpha) => match self.union_find.get(alpha) {
                 Some(tau) => self.canonicalize(&tau.clone()),
                 None => tau.clone(),
             },
