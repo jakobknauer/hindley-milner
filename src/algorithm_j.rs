@@ -39,7 +39,8 @@ impl Algorithm {
             }
             Expr::Abs(x, e) => {
                 let tau = Mono::Var(self.new_var());
-                let tau_prime = self.infer(e, &(Gamma | Binding(x.clone(), Poly::Mono(tau.clone()))))?;
+                let Gamma_prime = Gamma | Binding(x.clone(), Poly::mono(tau.clone()));
+                let tau_prime = self.infer(e, &Gamma_prime)?;
                 Some(Mono::arrow(tau, tau_prime))
             }
             Expr::Let(x, e0, e1) => {
@@ -51,14 +52,13 @@ impl Algorithm {
         }
     }
 
-    fn inst(&mut self, sigma: Poly) -> Mono {
-        match sigma {
-            Poly::Mono(tau) => tau,
-            Poly::Quant(alpha, sigma) => {
-                let beta = self.new_var();
-                self.inst(sigma.replace(&alpha, &beta))
-            }
+    fn inst(&mut self, Poly(alphas, tau): &Poly) -> Mono {
+        let mut tau = tau.clone();
+        for alpha in alphas {
+            let beta = self.new_var();
+            tau = tau.replace(&alpha, &beta);
         }
+        tau
     }
 
     // TODO: create actual fresh variables

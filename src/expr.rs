@@ -9,20 +9,20 @@ pub enum Expr {
 }
 
 impl Expr {
-    pub fn var(x: &str) -> Expr {
-        Expr::Var(x.to_string())
+    pub fn var(x: impl Into<String>) -> Expr {
+        Expr::Var(x.into())
     }
 
     pub fn app(e1: Expr, e2: Expr) -> Expr {
         Expr::App(Box::new(e1), Box::new(e2))
     }
 
-    pub fn abs(var: &str, e: Expr) -> Expr {
-        Expr::Abs(var.to_string(), Box::new(e))
+    pub fn abs(var: impl Into<String>, e: Expr) -> Expr {
+        Expr::Abs(var.into(), Box::new(e))
     }
 
-    pub fn r#let(x: &str, e1: Expr, e2: Expr) -> Expr {
-        Expr::Let(x.to_string(), Box::new(e1), Box::new(e2))
+    pub fn r#let(x: impl Into<String>, e1: Expr, e2: Expr) -> Expr {
+        Expr::Let(x.into(), Box::new(e1), Box::new(e2))
     }
 }
 

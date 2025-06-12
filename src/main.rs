@@ -1,7 +1,7 @@
 use crate::{
     ctxt::{Binding, Ctxt},
     expr::Expr,
-    types::Mono,
+    types::{Mono, Poly},
 };
 
 mod algorithm_j;
@@ -23,12 +23,12 @@ fn main() {
         ),
     );
 
-    let int = Mono::App("Int".to_string(), vec![]);
+    let int = Mono::nullary("Int");
 
     let Gamma = &Ctxt::new()
         | Binding(
             "plus".to_string(),
-            types::Poly::Mono(Mono::arrow(int.clone(), Mono::arrow(int.clone(), int))),
+            Poly::mono(Mono::arrow(int.clone(), Mono::arrow(int.clone(), int))),
         );
 
     let sigma = algorithm_j::infer(&quadruple, &Gamma).unwrap();

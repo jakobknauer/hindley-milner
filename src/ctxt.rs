@@ -18,11 +18,11 @@ impl Ctxt {
         bindings.iter().flat_map(|Binding(_, sigma)| sigma.free()).collect()
     }
 
-    pub fn get(&self, x: &Var) -> Option<Poly> {
+    pub fn get(&self, x: &Var) -> Option<&Poly> {
         let Ctxt(bindings) = self;
         bindings
             .iter()
-            .filter_map(|Binding(y, sigma)| (x == y).then_some(sigma.clone()))
+            .filter_map(|Binding(y, sigma)| (x == y).then_some(sigma))
             .next()
     }
 }
