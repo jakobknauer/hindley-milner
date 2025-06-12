@@ -7,6 +7,7 @@ use crate::{
 mod algorithm_j;
 mod ctxt;
 mod expr;
+mod parse;
 mod types;
 
 #[allow(nonstandard_style)]
@@ -34,4 +35,6 @@ fn main() {
     let sigma = algorithm_j::infer(&quadruple, &Gamma).unwrap();
 
     println!("{Gamma} ⊢ {quadruple} : {sigma}");
+
+    parse::token::tokenize("let double = lambda x . plus x x in lambda n . double (double n)  ");
 }
