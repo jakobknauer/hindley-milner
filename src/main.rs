@@ -4,9 +4,11 @@ mod expr;
 mod parse;
 mod types;
 
-use ctxt::{Binding, Ctxt};
-use expr::Expr;
-use types::{Mono, Poly};
+use crate::{
+    ctxt::{Binding, Ctxt},
+    expr::Expr,
+    types::{Mono, Poly},
+};
 
 #[allow(nonstandard_style)]
 fn main() {
@@ -34,5 +36,5 @@ fn main() {
 
     println!("{Gamma} ⊢ {quadruple} : {sigma}");
 
-    parse::token::tokenize("let double = lambda x . plus x x in lambda n . double (double n)  ");
+    let e = parse::parse("let double = lambda x . plus x x in lambda n . double (double n)  ");
 }

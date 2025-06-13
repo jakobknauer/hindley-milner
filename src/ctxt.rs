@@ -1,7 +1,9 @@
 use std::collections::HashSet;
 
-use crate::expr::Var;
-use crate::types::{Poly, TypeVar};
+use crate::{
+    expr::Var,
+    types::{Poly, TypeVar},
+};
 
 #[derive(Clone)]
 pub struct Binding(pub Var, pub Poly);

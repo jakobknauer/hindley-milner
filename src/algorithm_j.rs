@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 
-use crate::ctxt::{Binding, Ctxt};
-use crate::expr::Expr;
-use crate::types::{Mono, Poly, TypeVar};
+use crate::{
+    ctxt::{Binding, Ctxt},
+    expr::Expr,
+    types::{Mono, Poly, TypeVar},
+};
 
 #[allow(nonstandard_style)]
 pub fn infer(e: &Expr, Gamma: &Ctxt) -> Option<Poly> {
