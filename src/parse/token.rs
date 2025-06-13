@@ -1,6 +1,6 @@
 use std::{char, iter::Peekable};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Token {
     Var(String),
     Lambda,

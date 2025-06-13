@@ -6,24 +6,12 @@ mod types;
 
 use crate::{
     ctxt::{Binding, Ctxt},
-    expr::Expr,
+    parse::ParseError,
     types::{Mono, Poly},
 };
 
 #[allow(nonstandard_style)]
 fn main() {
-    let plus = Expr::var("plus");
-    let double = Expr::abs("x", Expr::app(Expr::app(plus.clone(), Expr::var("x")), Expr::var("x")));
-
-    let quadruple = Expr::r#let(
-        "double",
-        double.clone(),
-        Expr::abs(
-            "n",
-            Expr::app(Expr::var("double"), Expr::app(Expr::var("double"), Expr::var("n"))),
-        ),
-    );
-
     let int = Mono::nullary("Int");
 
     let Gamma = &Ctxt::new()
@@ -32,11 +20,21 @@ fn main() {
             Poly::mono(Mono::arrow(int.clone(), Mono::arrow(int.clone(), int))),
         );
 
-    let sigma = algorithm_j::infer(&quadruple, &Gamma).unwrap();
+    let parse_result = parse::parse("let double = lambda x . plus x x in lambda n . double (double n)");
 
-    println!("{Gamma} ⊢ {quadruple} : {sigma}");
-
-    let e = parse::parse("let double = lambda x . plus x x in lambda n . double (double n)").unwrap();
-
-    println!("{e}");
+    match parse_result {
+        Ok(e) => {
+            let sigma = algorithm_j::infer(&e, &Gamma).unwrap();
+            println!("{Gamma} ⊢ {e} : {sigma}");
+        }
+        Err(ParseError::UnexpectedToken { unexpected, expected }) => {
+            println!("Unexpected token of type {unexpected:?}, expected {expected} instead.")
+        }
+        Err(ParseError::UnexpectedEOF) => {
+            println!("Unexpectedly reached end of file.")
+        }
+        Err(ParseError::TrailingTokens) => {
+            println!("Tokens remained after parsing finished.")
+        }
+    }
 }
