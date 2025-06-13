@@ -36,5 +36,7 @@ fn main() {
 
     println!("{Gamma} ⊢ {quadruple} : {sigma}");
 
-    let e = parse::parse("let double = lambda x . plus x x in lambda n . double (double n)  ");
+    let e = parse::parse("let double = lambda x . plus x x in lambda n . double (double n)").unwrap();
+
+    println!("{e}");
 }

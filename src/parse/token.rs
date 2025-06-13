@@ -3,7 +3,6 @@ use std::{char, iter::Peekable};
 #[derive(Debug)]
 pub enum Token {
     Var(String),
-    CapVar(String),
     Lambda,
     Dot,
     Let,
@@ -14,9 +13,7 @@ pub enum Token {
 }
 
 pub fn tokenize(text: &str) -> Vec<Token> {
-    let tokens = Tokenizer::new(text.chars()).collect();
-    dbg!(text, &tokens);
-    tokens
+    Tokenizer::new(text.chars()).collect()
 }
 
 struct Tokenizer<I: Iterator<Item = char>> {
@@ -24,7 +21,7 @@ struct Tokenizer<I: Iterator<Item = char>> {
 }
 
 impl<I: Iterator<Item = char>> Tokenizer<I> {
-    fn new(text: I) -> Tokenizer<I> {
+    fn new(text: I) -> Self {
         Tokenizer { text: text.peekable() }
     }
 
@@ -75,7 +72,6 @@ impl<I: Iterator<Item = char>> Iterator for Tokenizer<I> {
                     "lambda" => Lambda,
                     "let" => Let,
                     "in" => In,
-                    _ if token.chars().next()?.is_ascii_uppercase() => CapVar(token),
                     _ => Var(token),
                 }
             }
