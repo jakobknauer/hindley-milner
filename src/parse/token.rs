@@ -2,7 +2,7 @@ use std::{char, iter::Peekable};
 
 use crate::{consume_and_return, parse::ParseError};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Token {
     Var(String),
     Lambda,

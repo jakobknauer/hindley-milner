@@ -6,7 +6,7 @@ use std::iter::Peekable;
 
 use crate::{expr::Expr, parse::token::Token};
 
-#[derive(PartialEq, Eq, Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ParseError {
     UnexpectedToken { unexpected: Token, expected: String },
     UnexpectedEOF,

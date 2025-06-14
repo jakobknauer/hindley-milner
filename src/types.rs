@@ -5,14 +5,14 @@ use crate::ctxt::Ctxt;
 pub type TypeVar = String;
 pub type TypeFunc = String;
 
-#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Mono {
     Var(TypeVar),
     App(TypeFunc, Vec<Mono>),
 }
 
 #[derive(Clone, Debug)]
-pub struct Poly(pub HashSet<TypeVar>, pub Mono);
+pub struct Poly(HashSet<TypeVar>, Mono);
 
 const ARROW: &str = "→";
 
