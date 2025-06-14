@@ -13,7 +13,7 @@ pub enum ParseError {
     TokenizerError(String),
 }
 
-type ParseResult = Result<Expr, ParseError>;
+pub type ParseResult = Result<Expr, ParseError>;
 
 pub fn parse(text: &str) -> ParseResult {
     let tokens = token::tokenize(text)?;

@@ -6,14 +6,21 @@ use crate::{
     types::{Mono, Poly, TypeVar},
 };
 
+pub enum InferenceError {
+    UnknownVar(String),
+    ImpossibleUnification(Mono, Mono),
+}
+
+pub type InferenceResult<T> = Result<T, InferenceError>;
+
 #[allow(nonstandard_style)]
-pub fn infer(e: &Expr, Gamma: &Ctxt) -> Option<Poly> {
+pub fn infer(e: &Expr, Gamma: &Ctxt) -> InferenceResult<Poly> {
     let mut algorithm = AlgorithmJ::new();
     let tau = algorithm
         .infer(e, Gamma)?
         .canonicalize(&algorithm.aliases)
         .generalize(Gamma);
-    Some(tau)
+    Ok(tau)
 }
 
 struct AlgorithmJ {
@@ -30,31 +37,31 @@ impl AlgorithmJ {
     }
 
     #[allow(nonstandard_style)]
-    pub fn infer(&mut self, e: &Expr, Gamma: &Ctxt) -> Option<Mono> {
+    pub fn infer(&mut self, e: &Expr, Gamma: &Ctxt) -> InferenceResult<Mono> {
         match e {
             Expr::Var(x) => {
-                let sigma = Gamma.get(x)?;
+                let sigma = Gamma.get(x).ok_or_else(|| InferenceError::UnknownVar(x.into()))?;
                 let tau = sigma.clone().inst(self.new_vars());
-                Some(tau)
+                Ok(tau)
             }
             Expr::App(e0, e1) => {
                 let tau0 = self.infer(e0, Gamma)?;
                 let tau1 = self.infer(e1, Gamma)?;
                 let tau_prime = self.new_var();
-                self.unify(tau0, Mono::arrow(tau1, tau_prime.clone()));
-                Some(tau_prime)
+                self.unify(tau0, Mono::arrow(tau1, tau_prime.clone()))?;
+                Ok(tau_prime)
             }
             Expr::Abs(x, e) => {
                 let tau = self.new_var();
                 let Gamma_prime = Gamma | Binding(x.clone(), Poly::mono(tau.clone()));
                 let tau_prime = self.infer(e, &Gamma_prime)?;
-                Some(Mono::arrow(tau, tau_prime))
+                Ok(Mono::arrow(tau, tau_prime))
             }
             Expr::Let(x, e0, e1) => {
                 let tau = self.infer(e0, Gamma)?.canonicalize(&self.aliases).generalize(Gamma);
                 let Gamma_prime = Gamma | Binding(x.clone(), tau);
-                let tau_prime = self.infer(e1, &Gamma_prime);
-                tau_prime
+                let tau_prime = self.infer(e1, &Gamma_prime)?;
+                Ok(tau_prime)
             }
         }
     }
@@ -70,21 +77,23 @@ impl AlgorithmJ {
     }
 
     #[allow(nonstandard_style)]
-    fn unify(&mut self, tau1: Mono, tau2: Mono) {
+    fn unify(&mut self, tau1: Mono, tau2: Mono) -> InferenceResult<()> {
         let tau1 = tau1.canonicalize(&self.aliases);
         let tau2 = tau2.canonicalize(&self.aliases);
 
         match (tau1, tau2) {
-            (tau1, tau2) if tau1 == tau2 => (),
+            (tau1, tau2) if tau1 == tau2 => Ok(()),
             (Mono::App(C1, taus1), Mono::App(C2, taus2)) if C1 == C2 && taus1.len() == taus2.len() => {
                 for (tau1, tau2) in taus1.into_iter().zip(taus2) {
-                    self.unify(tau1, tau2);
+                    self.unify(tau1, tau2)?
                 }
+                Ok(())
             }
             (Mono::Var(alpha), tau) | (tau, Mono::Var(alpha)) => {
                 self.aliases.insert(alpha, tau);
+                Ok(())
             }
-            (tau1, tau2) => panic!("cannot unify canonicalized types {tau1} and {tau2}"),
+            (tau1, tau2) => Err(InferenceError::ImpossibleUnification(tau1, tau2)),
         }
     }
 }
