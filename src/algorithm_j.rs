@@ -59,10 +59,9 @@ impl AlgorithmJ {
         }
     }
 
-    // TODO: create actual fresh variables
     fn new_var(&mut self) -> Mono {
         self.counter += 1;
-        let alpha = format!("x{}", self.counter);
+        let alpha = format!("_{}", self.counter);
         Mono::Var(alpha)
     }
 
