@@ -58,6 +58,13 @@ impl Mono {
             Mono::App(C, taus) => Mono::App(C, taus.into_iter().map(|tau| tau.replace(alpha, beta)).collect()),
         }
     }
+
+    pub fn occurs(&self, alpha: &str) -> bool {
+        match self {
+            Mono::Var(beta) => alpha == beta,
+            Mono::App(_, taus) => taus.iter().any(|tau| tau.occurs(alpha)),
+        }
+    }
 }
 
 impl Poly {
@@ -112,7 +119,7 @@ impl std::fmt::Display for Poly {
             for alpha in alphas {
                 write!(f, " {}", alpha)?;
             }
-            write!(f, ". {}", tau)
+            write!(f, " . {}", tau)
         }
     }
 }

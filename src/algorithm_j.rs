@@ -9,6 +9,7 @@ use crate::{
 pub enum InferenceError {
     UnknownVar(String),
     ImpossibleUnification(Mono, Mono),
+    RecursiveType(Mono, String),
 }
 
 pub type InferenceResult<T> = Result<T, InferenceError>;
@@ -90,8 +91,12 @@ impl AlgorithmJ {
                 Ok(())
             }
             (Mono::Var(alpha), tau) | (tau, Mono::Var(alpha)) => {
-                self.aliases.insert(alpha, tau);
-                Ok(())
+                if tau.occurs(&alpha) {
+                    Err(InferenceError::RecursiveType(tau, alpha))
+                } else {
+                    self.aliases.insert(alpha, tau);
+                    Ok(())
+                }
             }
             (tau1, tau2) => Err(InferenceError::ImpossibleUnification(tau1, tau2)),
         }
