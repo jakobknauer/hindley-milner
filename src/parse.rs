@@ -6,6 +6,7 @@ use std::iter::Peekable;
 
 use crate::{expr::Expr, parse::token::Token};
 
+#[derive(PartialEq, Eq, Debug)]
 pub enum ParseError {
     UnexpectedToken { unexpected: Token, expected: String },
     UnexpectedEOF,
@@ -117,5 +118,95 @@ impl<I: Iterator<Item = Token>> Parser<I> {
 
             token => unexpected_token_error(token, "'(', or a variable"),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_basic() {
+        assert_eq!(parse("x"), Ok(Expr::var("x")));
+        assert_eq!(parse("lambda x . y"), Ok(Expr::abs("x", Expr::var("y"))));
+        assert_eq!(parse("λ x . y"), Ok(Expr::abs("x", Expr::var("y"))));
+        assert_eq!(parse("x y"), Ok(Expr::app(Expr::var("x"), Expr::var("y"))));
+        assert_eq!(
+            parse("let x = y in z"),
+            Ok(Expr::r#let("x", Expr::var("y"), Expr::var("z")))
+        );
+        assert_eq!(parse("(x)"), Ok(Expr::var("x")));
+
+        // parens and applications
+        assert_eq!(
+            parse("x y z"),
+            Ok(Expr::app(Expr::app(Expr::var("x"), Expr::var("y")), Expr::var("z")))
+        );
+        assert_eq!(
+            parse("(x y) z"),
+            Ok(Expr::app(Expr::app(Expr::var("x"), Expr::var("y")), Expr::var("z")))
+        );
+        assert_eq!(
+            parse("x (y z)"),
+            Ok(Expr::app(Expr::var("x"), Expr::app(Expr::var("y"), Expr::var("z"))))
+        );
+    }
+
+    #[test]
+    fn test_parse_malformed() {
+        assert!(matches!(parse("lambda x y"), Err(ParseError::UnexpectedToken { .. })));
+        assert!(matches!(parse("lambda x ."), Err(ParseError::UnexpectedEOF)));
+        assert!(matches!(parse("lambda x ? y"), Err(ParseError::TokenizerError(..))));
+        assert!(matches!(parse("lambda x . y )"), Err(ParseError::TrailingTokens)));
+        assert!(matches!(parse("let x in y"), Err(ParseError::UnexpectedToken { .. })));
+        assert!(matches!(parse("let x = y in"), Err(ParseError::UnexpectedEOF)));
+        assert!(matches!(
+            parse("let lambda = y in z"),
+            Err(ParseError::UnexpectedToken { .. })
+        ));
+    }
+
+    #[test]
+    fn test_parse_atomic_and_lambda() {
+        assert_eq!(
+            parse("lambda x . y z"),
+            Ok(Expr::abs("x", Expr::app(Expr::var("y"), Expr::var("z"))))
+        );
+        assert!(matches!(parse("z lambda x . y"), Err(ParseError::TrailingTokens)));
+        assert_eq!(
+            parse("(lambda x . y) z"),
+            Ok(Expr::app(Expr::abs("x", Expr::var("y")), Expr::var("z")))
+        );
+        assert_eq!(
+            parse("z (lambda x . y)"),
+            Ok(Expr::app(Expr::var("z"), Expr::abs("x", Expr::var("y"))))
+        );
+    }
+
+    #[test]
+    fn test_parse_atomic_and_let() {
+        assert_eq!(
+            parse("let x = y in z a"),
+            Ok(Expr::r#let(
+                "x",
+                Expr::var("y"),
+                Expr::app(Expr::var("z"), Expr::var("a"))
+            ))
+        );
+        assert!(matches!(parse("a let x = y in y"), Err(ParseError::TrailingTokens)));
+        assert_eq!(
+            parse("(let x = y in z) a"),
+            Ok(Expr::app(
+                Expr::r#let("x", Expr::var("y"), Expr::var("z")),
+                Expr::var("a")
+            ))
+        );
+        assert_eq!(
+            parse("a (let x = y in z)"),
+            Ok(Expr::app(
+                Expr::var("a"),
+                Expr::r#let("x", Expr::var("y"), Expr::var("z"))
+            ))
+        );
     }
 }
