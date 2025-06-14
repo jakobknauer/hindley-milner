@@ -1,4 +1,6 @@
 mod token;
+#[macro_use]
+mod macros;
 
 use std::iter::Peekable;
 
@@ -8,13 +10,21 @@ pub enum ParseError {
     UnexpectedToken { unexpected: Token, expected: String },
     UnexpectedEOF,
     TrailingTokens,
+    TokenizerError(String),
 }
 
 type ParseResult = Result<Expr, ParseError>;
 
 pub fn parse(text: &str) -> ParseResult {
-    let tokens = token::tokenize(text);
-    Parser::new(tokens.into_iter()).parse()
+    let tokens = token::tokenize(text)?;
+    Parser::new(tokens).parse()
+}
+
+fn unexpected_token_error(unexpected: &Token, expected: &str) -> ParseResult {
+    Err(ParseError::UnexpectedToken {
+        expected: expected.to_string(),
+        unexpected: unexpected.clone(),
+    })
 }
 
 struct Parser<I: Iterator<Item = Token>> {
@@ -22,9 +32,9 @@ struct Parser<I: Iterator<Item = Token>> {
 }
 
 impl<I: Iterator<Item = Token>> Parser<I> {
-    fn new(tokens: I) -> Self {
+    fn new(tokens: impl IntoIterator<IntoIter = I>) -> Self {
         Parser {
-            tokens: tokens.peekable(),
+            tokens: tokens.into_iter().peekable(),
         }
     }
 
@@ -50,66 +60,27 @@ impl<I: Iterator<Item = Token>> Parser<I> {
 
         match self.current()? {
             Lambda => {
-                self.consume()?;
-
-                let token = self.consume()?;
-                let Var(x) = token else {
-                    return Err(ParseError::UnexpectedToken {
-                        expected: "variable".to_string(),
-                        unexpected: token,
-                    });
-                };
-
-                let token = self.consume()?;
-                let Dot = token else {
-                    return Err(ParseError::UnexpectedToken {
-                        expected: "'.'".to_string(),
-                        unexpected: token,
-                    });
-                };
-
+                expect_token!(self, Lambda, "'lambda', or 'λ'");
+                let x = expect_variable!(self, "a variable");
+                expect_token!(self, Dot, "'.'");
                 let e = self.parse_expr()?;
 
                 Ok(Expr::abs(x, e))
             }
             Let => {
-                self.consume()?;
-
-                let token = self.consume()?;
-                let Var(x) = token else {
-                    return Err(ParseError::UnexpectedToken {
-                        expected: "a variable".to_string(),
-                        unexpected: token,
-                    });
-                };
-
-                let token = self.consume()?;
-                let Equals = token else {
-                    return Err(ParseError::UnexpectedToken {
-                        expected: "'='".to_string(),
-                        unexpected: token,
-                    });
-                };
-
+                expect_token!(self, Let, "'let'");
+                let x = expect_variable!(self, "a variable");
+                expect_token!(self, Equals, "'='");
                 let e1 = self.parse_expr()?;
-
-                let token = self.consume()?;
-                let In = token else {
-                    return Err(ParseError::UnexpectedToken {
-                        expected: "'in'".to_string(),
-                        unexpected: token,
-                    });
-                };
-
+                expect_token!(self, In, "'in'");
                 let e2 = self.parse_expr()?;
 
                 Ok(Expr::r#let(x, e1, e2))
             }
+
             LParen | Var(..) => self.parse_app(),
-            token => Err(ParseError::UnexpectedToken {
-                expected: "'lambda', 'λ', 'let', '(', or a variable".to_string(),
-                unexpected: token.clone(),
-            }),
+
+            token => unexpected_token_error(token, "'lambda', 'λ', 'let', '(', or a variable"),
         }
     }
 
@@ -131,29 +102,20 @@ impl<I: Iterator<Item = Token>> Parser<I> {
 
         match self.current()? {
             LParen => {
-                self.consume()?;
-
+                expect_token!(self, LParen, "'('");
                 let e = self.parse_expr()?;
-
-                let token = self.consume()?;
-                let RParen = token else {
-                    return Err(ParseError::UnexpectedToken {
-                        expected: "')'".to_string(),
-                        unexpected: token,
-                    });
-                };
+                expect_token!(self, RParen, "')'");
 
                 Ok(e)
             }
             Var(x) => {
                 let e = Expr::var(x);
                 self.consume()?;
+
                 Ok(e)
             }
-            token => Err(ParseError::UnexpectedToken {
-                expected: "''(', or a variable".to_string(),
-                unexpected: token.clone(),
-            }),
+
+            token => unexpected_token_error(token, "'(', or a variable"),
         }
     }
 }

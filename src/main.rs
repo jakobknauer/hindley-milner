@@ -36,5 +36,8 @@ fn main() {
         Err(ParseError::TrailingTokens) => {
             println!("Tokens remained after parsing finished.")
         }
+        Err(ParseError::TokenizerError(msg)) => {
+            println!("Error during tokenization: {msg}.");
+        }
     }
 }

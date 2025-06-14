@@ -1,5 +1,7 @@
 use std::{char, iter::Peekable};
 
+use crate::{consume_and_return, parse::ParseError};
+
 #[derive(Debug, Clone)]
 pub enum Token {
     Var(String),
@@ -12,7 +14,7 @@ pub enum Token {
     RParen,
 }
 
-pub fn tokenize(text: &str) -> Vec<Token> {
+pub fn tokenize(text: &str) -> Result<Vec<Token>, ParseError> {
     Tokenizer::new(text.chars()).collect()
 }
 
@@ -37,12 +39,6 @@ impl<I: Iterator<Item = char>> Tokenizer<I> {
         self.text.next();
     }
 
-    /// TODO: Refactor this into a macro
-    fn consume_and_return(&mut self, token: Token) -> Token {
-        self.consume();
-        token
-    }
-
     fn consume_keyword_or_var(&mut self) -> String {
         use peeking_take_while::PeekableExt;
         self.text.peeking_take_while(|c| c.is_ascii_alphanumeric()).collect()
@@ -50,7 +46,7 @@ impl<I: Iterator<Item = char>> Tokenizer<I> {
 }
 
 impl<I: Iterator<Item = char>> Iterator for Tokenizer<I> {
-    type Item = Token;
+    type Item = Result<Token, ParseError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         use Token::*;
@@ -60,11 +56,11 @@ impl<I: Iterator<Item = char>> Iterator for Tokenizer<I> {
         }
 
         let token = match self.current()? {
-            '.' => self.consume_and_return(Dot),
-            'λ' => self.consume_and_return(Lambda),
-            '=' => self.consume_and_return(Equals),
-            '(' => self.consume_and_return(LParen),
-            ')' => self.consume_and_return(RParen),
+            '.' => consume_and_return!(self, Dot),
+            'λ' => consume_and_return!(self, Lambda),
+            '=' => consume_and_return!(self, Equals),
+            '(' => consume_and_return!(self, LParen),
+            ')' => consume_and_return!(self, RParen),
 
             c if c.is_ascii_alphabetic() => {
                 let token = self.consume_keyword_or_var();
@@ -76,9 +72,9 @@ impl<I: Iterator<Item = char>> Iterator for Tokenizer<I> {
                 }
             }
 
-            c => panic!("unexpected character '{c}'"),
+            c => return Some(Err(ParseError::TokenizerError(format!("unexpected character '{c}'")))),
         };
 
-        Some(token)
+        Some(Ok(token))
     }
 }
