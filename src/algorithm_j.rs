@@ -218,7 +218,7 @@ mod tests {
     #[test]
     #[allow(nonstandard_style)]
     fn test_specialize_let() {
-        let Int = Poly::mono(Mono::nullary("Int"));
+        let Int = parse_poly("Int").unwrap();
 
         let Gamma = Ctxt::new().bind("n", Int.clone());
 
