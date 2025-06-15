@@ -6,10 +6,10 @@ use crate::{
 };
 
 #[derive(Clone)]
-pub struct Binding(pub Var, pub Poly);
+struct Binding(Var, Poly);
 
 #[derive(Clone)]
-pub struct Ctxt(pub Vec<Binding>);
+pub struct Ctxt(Vec<Binding>);
 
 impl Ctxt {
     pub const fn new() -> Ctxt {
@@ -29,14 +29,10 @@ impl Ctxt {
             .filter_map(|Binding(y, sigma)| (x == y).then_some(sigma))
             .next()
     }
-}
 
-impl core::ops::BitOr<Binding> for Ctxt {
-    type Output = Ctxt;
-
-    fn bitor(self, rhs: Binding) -> Self::Output {
+    pub fn bind(self, x: impl Into<Var>, sigma: Poly) -> Self {
         let Ctxt(mut bindings) = self;
-        bindings.push(rhs);
+        bindings.push(Binding(x.into(), sigma));
         Ctxt(bindings)
     }
 }

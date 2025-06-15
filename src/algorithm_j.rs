@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    ctxt::{Binding, Ctxt},
+    ctxt::Ctxt,
     expr::Expr,
     types::{Mono, Poly, TypeVar},
 };
@@ -55,13 +55,13 @@ impl AlgorithmJ {
             }
             Expr::Abs(x, e) => {
                 let tau = self.new_var();
-                let Gamma_prime = Gamma.clone() | Binding(x.clone(), Poly::mono(tau.clone()));
+                let Gamma_prime = Gamma.clone().bind(x, Poly::mono(tau.clone()));
                 let tau_prime = self.infer(e, &Gamma_prime)?;
                 Ok(Mono::arrow(tau, tau_prime))
             }
             Expr::Let(x, e0, e1) => {
                 let tau = self.infer(e0, Gamma)?.canonicalize(&self.aliases).generalize(Gamma);
-                let Gamma_prime = Gamma.clone() | Binding(x.clone(), tau);
+                let Gamma_prime = Gamma.clone().bind(x, tau);
                 let tau_prime = self.infer(e1, &Gamma_prime)?;
                 Ok(tau_prime)
             }
@@ -116,7 +116,7 @@ mod tests {
     #[allow(nonstandard_style)]
     fn test_var_from_context() {
         let C = Poly::mono(Mono::app("C", []));
-        let Gamma = Ctxt::new() | Binding("x".into(), C.clone());
+        let Gamma = Ctxt::new().bind("x", C.clone());
 
         assert_eq!(infer(&parse("x").unwrap(), &Gamma), Ok(C));
     }
@@ -145,7 +145,7 @@ mod tests {
             Mono::arrow(Mono::var("x"), Mono::arrow(Mono::var("x"), Mono::var("x"))),
         );
 
-        let Gamma = Ctxt::new() | Binding("unify".into(), Unifier);
+        let Gamma = Ctxt::new().bind("unify", Unifier);
 
         assert_eq!(
             infer(&parse("lambda x . lambda y . unify x y").unwrap(), &Gamma),
@@ -166,8 +166,7 @@ mod tests {
         let Int = Poly::mono(Mono::nullary("Int"));
         let a = Poly::mono(Mono::var("a"));
 
-        let Gamma =
-            Ctxt::new() | Binding("unify".into(), Unifier) | Binding("n".into(), Int.clone()) | Binding("x".into(), a);
+        let Gamma = Ctxt::new().bind("unify", Unifier).bind("n", Int.clone()).bind("x", a);
 
         assert_eq!(infer(&parse("unify n x").unwrap(), &Gamma), Ok(Int));
     }
@@ -182,9 +181,9 @@ mod tests {
         let Int = Poly::mono(Mono::nullary("Int"));
 
         let Gamma = Ctxt::new()
-            | Binding("unify".into(), Unifier)
-            | Binding("n".into(), Int.clone())
-            | Binding("m".into(), Int.clone());
+            .bind("unify", Unifier)
+            .bind("n", Int.clone())
+            .bind("m", Int.clone());
 
         assert_eq!(infer(&parse("unify n m").unwrap(), &Gamma), Ok(Int));
     }
@@ -199,8 +198,7 @@ mod tests {
         let Int = Poly::mono(Mono::nullary("Int"));
         let String = Poly::mono(Mono::nullary("String"));
 
-        let Gamma =
-            Ctxt::new() | Binding("unify".into(), Unifier) | Binding("n".into(), Int) | Binding("s".into(), String);
+        let Gamma = Ctxt::new().bind("unify", Unifier).bind("n", Int).bind("s", String);
 
         assert!(matches!(
             infer(&parse("unify n s").unwrap(), &Gamma),
@@ -258,7 +256,7 @@ mod tests {
     fn test_specialize_let() {
         let Int = Poly::mono(Mono::nullary("Int"));
 
-        let Gamma = Ctxt::new() | Binding("n".into(), Int);
+        let Gamma = Ctxt::new().bind("n", Int);
 
         assert_eq!(
             infer(&parse("let id = lambda x . x in id n").unwrap(), &Gamma),

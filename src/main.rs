@@ -6,7 +6,7 @@ mod types;
 
 use crate::{
     algorithm_j::InferenceError,
-    ctxt::{Binding, Ctxt},
+    ctxt::Ctxt,
     parse::ParseError,
     types::{Mono, Poly},
 };
@@ -14,11 +14,10 @@ use crate::{
 #[allow(nonstandard_style)]
 fn main() {
     let int = Mono::nullary("Int");
-    let Gamma = Ctxt::new()
-        | Binding(
-            "plus".to_string(),
-            Poly::mono(Mono::arrow(int.clone(), Mono::arrow(int.clone(), int))),
-        );
+    let Gamma = Ctxt::new().bind(
+        "plus",
+        Poly::mono(Mono::arrow(int.clone(), Mono::arrow(int.clone(), int))),
+    );
 
     let text = "let double = lambda x . plus x x in lambda n . double (double n)";
 
