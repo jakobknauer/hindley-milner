@@ -7,17 +7,12 @@ mod types;
 use crate::{
     algorithm_j::InferenceError,
     ctxt::Ctxt,
-    parse::ParseError,
-    types::{Mono, Poly},
+    parse::{ParseError, parse_poly},
 };
 
 #[allow(nonstandard_style)]
 fn main() {
-    let int = Mono::nullary("Int");
-    let Gamma = Ctxt::new().bind(
-        "plus",
-        Poly::mono(Mono::arrow(int.clone(), Mono::arrow(int.clone(), int))),
-    );
+    let Gamma = Ctxt::new().bind("plus", parse_poly("Int to Int to Int").unwrap());
 
     let text = "let double = lambda x . plus x x in lambda n . double (double n)";
 

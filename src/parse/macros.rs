@@ -21,6 +21,17 @@ macro_rules! expect_variable {
 }
 
 #[macro_export]
+macro_rules! expect_varcap {
+    ($parser:expr, $expected:expr) => {{
+        let token = $parser.consume()?;
+        let VarCap(x) = token else {
+            return unexpected_token_error(&token, $expected);
+        };
+        x
+    }};
+}
+
+#[macro_export]
 macro_rules! consume_and_return {
     ($tokenizer:expr, $token:expr) => {{
         $tokenizer.consume();

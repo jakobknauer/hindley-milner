@@ -106,7 +106,7 @@ impl AlgorithmJ {
 
 #[cfg(test)]
 mod tests {
-    use crate::parse::parse;
+    use crate::parse::{parse, parse_poly};
 
     use super::*;
 
@@ -115,7 +115,7 @@ mod tests {
     #[test]
     #[allow(nonstandard_style)]
     fn test_var_from_context() {
-        let C = Poly::mono(Mono::app("C", []));
+        let C = parse_poly("C").unwrap();
         let Gamma = Ctxt::new().bind("x", C.clone());
 
         assert_eq!(infer(&parse("x").unwrap(), &Gamma), Ok(C));
@@ -132,39 +132,30 @@ mod tests {
     #[test]
     fn test_identity() {
         assert_eq!(
-            infer(&parse("lambda x . x").unwrap(), &EMPTY),
-            Ok(Poly::new(["a"], Mono::arrow(Mono::var("a"), Mono::var("a"))))
+            infer(&parse("λ x . x").unwrap(), &EMPTY),
+            Ok(parse_poly("∀ a . a → a").unwrap())
         );
     }
 
     #[test]
     #[allow(nonstandard_style)]
     fn test_unify_vars() {
-        let Unifier = Poly::new(
-            ["x"],
-            Mono::arrow(Mono::var("x"), Mono::arrow(Mono::var("x"), Mono::var("x"))),
-        );
+        let Unifier = parse_poly("∀ x . x → x → x").unwrap();
 
         let Gamma = Ctxt::new().bind("unify", Unifier);
 
         assert_eq!(
-            infer(&parse("lambda x . lambda y . unify x y").unwrap(), &Gamma),
-            Ok(Poly::new(
-                ["a"],
-                Mono::arrow(Mono::var("a"), Mono::arrow(Mono::var("a"), Mono::var("a")))
-            ))
+            infer(&parse("λ x . λ y . unify x y").unwrap(), &Gamma),
+            Ok(parse_poly("∀ a . a → a → a ").unwrap())
         );
     }
 
     #[test]
     #[allow(nonstandard_style)]
     fn test_unify_type_and_var() {
-        let Unifier = Poly::new(
-            ["x"],
-            Mono::arrow(Mono::var("x"), Mono::arrow(Mono::var("x"), Mono::var("x"))),
-        );
-        let Int = Poly::mono(Mono::nullary("Int"));
-        let a = Poly::mono(Mono::var("a"));
+        let Unifier = parse_poly("∀ x . x → x → x").unwrap();
+        let Int = parse_poly("Int").unwrap();
+        let a = parse_poly("a").unwrap();
 
         let Gamma = Ctxt::new().bind("unify", Unifier).bind("n", Int.clone()).bind("x", a);
 
@@ -174,11 +165,8 @@ mod tests {
     #[test]
     #[allow(nonstandard_style)]
     fn test_unify_identical_types() {
-        let Unifier = Poly::new(
-            ["x"],
-            Mono::arrow(Mono::var("x"), Mono::arrow(Mono::var("x"), Mono::var("x"))),
-        );
-        let Int = Poly::mono(Mono::nullary("Int"));
+        let Unifier = parse_poly("∀ x . x → x → x").unwrap();
+        let Int = parse_poly("Int").unwrap();
 
         let Gamma = Ctxt::new()
             .bind("unify", Unifier)
@@ -191,12 +179,9 @@ mod tests {
     #[test]
     #[allow(nonstandard_style)]
     fn test_unify_distinct_types() {
-        let Unifier = Poly::new(
-            ["x"],
-            Mono::arrow(Mono::var("x"), Mono::arrow(Mono::var("x"), Mono::var("x"))),
-        );
-        let Int = Poly::mono(Mono::nullary("Int"));
-        let String = Poly::mono(Mono::nullary("String"));
+        let Unifier = parse_poly("∀ x . x → x → x").unwrap();
+        let Int = parse_poly("Int").unwrap();
+        let String = parse_poly("String").unwrap();
 
         let Gamma = Ctxt::new().bind("unify", Unifier).bind("n", Int).bind("s", String);
 
@@ -209,45 +194,24 @@ mod tests {
     #[test]
     fn test_apply() {
         assert_eq!(
-            infer(&parse("lambda f . lambda x. f x").unwrap(), &EMPTY),
-            Ok(Poly::new(
-                ["a", "b"],
-                Mono::arrow(
-                    Mono::arrow(Mono::var("a"), Mono::var("b")),
-                    Mono::arrow(Mono::var("a"), Mono::var("b"))
-                )
-            ))
+            infer(&parse("λ f . λ x . f x").unwrap(), &EMPTY),
+            Ok(parse_poly("∀ a b . (a → b) → a → b").unwrap())
         )
     }
 
     #[test]
     fn test_apply_2() {
         assert_eq!(
-            infer(&parse("lambda f . lambda x. x f").unwrap(), &EMPTY),
-            Ok(Poly::new(
-                ["a", "b"],
-                Mono::arrow(
-                    Mono::var("a"),
-                    Mono::arrow(Mono::arrow(Mono::var("a"), Mono::var("b")), Mono::var("b"))
-                )
-            ))
+            infer(&parse("λ f . λ x . x f").unwrap(), &EMPTY),
+            Ok(parse_poly("∀ a b . a → (a → b) → b").unwrap())
         )
     }
 
     #[test]
     fn test_concat() {
         assert_eq!(
-            infer(&parse("lambda f . lambda g . lambda x . f (g x)").unwrap(), &EMPTY),
-            Ok(Poly::new(
-                ["a", "b", "c"],
-                Mono::arrow(
-                    Mono::arrow(Mono::var("b"), Mono::var("c")),
-                    Mono::arrow(
-                        Mono::arrow(Mono::var("a"), Mono::var("b")),
-                        Mono::arrow(Mono::var("a"), Mono::var("c"))
-                    )
-                )
-            ))
+            infer(&parse("λ f . λ g . λ x . f (g x)").unwrap(), &EMPTY),
+            Ok(parse_poly("∀ a b c . (b → c) → (a → b) → (a → c)").unwrap())
         )
     }
 
@@ -256,18 +220,15 @@ mod tests {
     fn test_specialize_let() {
         let Int = Poly::mono(Mono::nullary("Int"));
 
-        let Gamma = Ctxt::new().bind("n", Int);
+        let Gamma = Ctxt::new().bind("n", Int.clone());
 
-        assert_eq!(
-            infer(&parse("let id = lambda x . x in id n").unwrap(), &Gamma),
-            Ok(Poly::mono(Mono::nullary("Int")))
-        );
+        assert_eq!(infer(&parse("let id = λ x . x in id n").unwrap(), &Gamma), Ok(Int));
     }
 
     #[test]
     fn test_recursive_unification() {
         assert!(matches!(
-            infer(&parse("lambda x . x x").unwrap(), &EMPTY),
+            infer(&parse("λ x . x x").unwrap(), &EMPTY),
             Err(InferenceError::RecursiveType(..))
         ));
     }

@@ -12,22 +12,11 @@ pub enum Mono {
 }
 
 #[derive(Clone, Debug, Eq)]
-pub struct Poly(HashSet<TypeVar>, Mono);
+pub struct Poly(pub HashSet<TypeVar>, pub Mono);
 
-const ARROW: &str = "→";
+pub const ARROW: &str = "→";
 
 impl Mono {
-    #[cfg(test)]
-    pub fn var(alpha: impl Into<String>) -> Mono {
-        Mono::Var(alpha.into())
-    }
-
-    #[cfg(test)]
-    #[allow(nonstandard_style)]
-    pub fn app(C: impl Into<String>, taus: impl IntoIterator<Item = Mono>) -> Mono {
-        Mono::App(C.into(), taus.into_iter().collect())
-    }
-
     pub fn arrow(tau1: Mono, tau2: Mono) -> Mono {
         Mono::App(String::from(ARROW), vec![tau1, tau2])
     }
@@ -79,11 +68,6 @@ impl Mono {
 }
 
 impl Poly {
-    #[cfg(test)]
-    pub fn new(alphas: impl IntoIterator<Item = impl Into<String>>, tau: Mono) -> Poly {
-        Poly(alphas.into_iter().map(Into::into).collect(), tau)
-    }
-
     pub fn mono(tau: Mono) -> Poly {
         Poly(HashSet::new(), tau)
     }

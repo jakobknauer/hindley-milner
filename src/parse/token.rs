@@ -5,6 +5,7 @@ use crate::{consume_and_return, parse::ParseError};
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Token {
     Var(String),
+    VarCap(String),
     Lambda,
     Dot,
     Let,
@@ -12,6 +13,8 @@ pub enum Token {
     Equals,
     LParen,
     RParen,
+    ForAll,
+    Arrow,
 }
 
 pub fn tokenize(text: &str) -> Result<Vec<Token>, ParseError> {
@@ -61,6 +64,8 @@ impl<I: Iterator<Item = char>> Iterator for Tokenizer<I> {
             '=' => consume_and_return!(self, Equals),
             '(' => consume_and_return!(self, LParen),
             ')' => consume_and_return!(self, RParen),
+            '∀' => consume_and_return!(self, ForAll),
+            '→' => consume_and_return!(self, Arrow),
 
             c if c.is_ascii_alphabetic() => {
                 let token = self.consume_keyword_or_var();
@@ -68,7 +73,10 @@ impl<I: Iterator<Item = char>> Iterator for Tokenizer<I> {
                     "lambda" => Lambda,
                     "let" => Let,
                     "in" => In,
-                    _ => Var(token),
+                    "forall" => ForAll,
+                    "to" => Arrow,
+                    token if token.chars().next().unwrap().is_ascii_lowercase() => Var(token.into()),
+                    token => VarCap(token.into()),
                 }
             }
 
