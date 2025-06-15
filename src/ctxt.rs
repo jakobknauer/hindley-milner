@@ -8,10 +8,11 @@ use crate::{
 #[derive(Clone)]
 pub struct Binding(pub Var, pub Poly);
 
+#[derive(Clone)]
 pub struct Ctxt(pub Vec<Binding>);
 
 impl Ctxt {
-    pub fn new() -> Ctxt {
+    pub const fn new() -> Ctxt {
         Ctxt(Vec::new())
     }
 
@@ -30,12 +31,11 @@ impl Ctxt {
     }
 }
 
-impl core::ops::BitOr<Binding> for &Ctxt {
+impl core::ops::BitOr<Binding> for Ctxt {
     type Output = Ctxt;
 
     fn bitor(self, rhs: Binding) -> Self::Output {
-        let Ctxt(bindings) = self;
-        let mut bindings = bindings.clone();
+        let Ctxt(mut bindings) = self;
         bindings.push(rhs);
         Ctxt(bindings)
     }

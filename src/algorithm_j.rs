@@ -6,6 +6,7 @@ use crate::{
     types::{Mono, Poly, TypeVar},
 };
 
+#[derive(Debug, PartialEq, Eq)]
 pub enum InferenceError {
     UnknownVar(String),
     ImpossibleUnification(Mono, Mono),
@@ -54,13 +55,13 @@ impl AlgorithmJ {
             }
             Expr::Abs(x, e) => {
                 let tau = self.new_var();
-                let Gamma_prime = Gamma | Binding(x.clone(), Poly::mono(tau.clone()));
+                let Gamma_prime = Gamma.clone() | Binding(x.clone(), Poly::mono(tau.clone()));
                 let tau_prime = self.infer(e, &Gamma_prime)?;
                 Ok(Mono::arrow(tau, tau_prime))
             }
             Expr::Let(x, e0, e1) => {
                 let tau = self.infer(e0, Gamma)?.canonicalize(&self.aliases).generalize(Gamma);
-                let Gamma_prime = Gamma | Binding(x.clone(), tau);
+                let Gamma_prime = Gamma.clone() | Binding(x.clone(), tau);
                 let tau_prime = self.infer(e1, &Gamma_prime)?;
                 Ok(tau_prime)
             }
@@ -100,5 +101,176 @@ impl AlgorithmJ {
             }
             (tau1, tau2) => Err(InferenceError::ImpossibleUnification(tau1, tau2)),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::parse::parse;
+
+    use super::*;
+
+    const EMPTY: Ctxt = Ctxt::new();
+
+    #[test]
+    #[allow(nonstandard_style)]
+    fn test_var_from_context() {
+        let C = Poly::mono(Mono::app("C", []));
+        let Gamma = Ctxt::new() | Binding("x".into(), C.clone());
+
+        assert_eq!(infer(&parse("x").unwrap(), &Gamma), Ok(C));
+    }
+
+    #[test]
+    fn test_var_not_in_context() {
+        assert_eq!(
+            infer(&parse("x").unwrap(), &EMPTY),
+            Err(InferenceError::UnknownVar("x".into()))
+        );
+    }
+
+    #[test]
+    fn test_identity() {
+        assert_eq!(
+            infer(&parse("lambda x . x").unwrap(), &EMPTY),
+            Ok(Poly::new(["a"], Mono::arrow(Mono::var("a"), Mono::var("a"))))
+        );
+    }
+
+    #[test]
+    #[allow(nonstandard_style)]
+    fn test_unify_vars() {
+        let Unifier = Poly::new(
+            ["x"],
+            Mono::arrow(Mono::var("x"), Mono::arrow(Mono::var("x"), Mono::var("x"))),
+        );
+
+        let Gamma = Ctxt::new() | Binding("unify".into(), Unifier);
+
+        assert_eq!(
+            infer(&parse("lambda x . lambda y . unify x y").unwrap(), &Gamma),
+            Ok(Poly::new(
+                ["a"],
+                Mono::arrow(Mono::var("a"), Mono::arrow(Mono::var("a"), Mono::var("a")))
+            ))
+        );
+    }
+
+    #[test]
+    #[allow(nonstandard_style)]
+    fn test_unify_type_and_var() {
+        let Unifier = Poly::new(
+            ["x"],
+            Mono::arrow(Mono::var("x"), Mono::arrow(Mono::var("x"), Mono::var("x"))),
+        );
+        let Int = Poly::mono(Mono::nullary("Int"));
+        let a = Poly::mono(Mono::var("a"));
+
+        let Gamma =
+            Ctxt::new() | Binding("unify".into(), Unifier) | Binding("n".into(), Int.clone()) | Binding("x".into(), a);
+
+        assert_eq!(infer(&parse("unify n x").unwrap(), &Gamma), Ok(Int));
+    }
+
+    #[test]
+    #[allow(nonstandard_style)]
+    fn test_unify_identical_types() {
+        let Unifier = Poly::new(
+            ["x"],
+            Mono::arrow(Mono::var("x"), Mono::arrow(Mono::var("x"), Mono::var("x"))),
+        );
+        let Int = Poly::mono(Mono::nullary("Int"));
+
+        let Gamma = Ctxt::new()
+            | Binding("unify".into(), Unifier)
+            | Binding("n".into(), Int.clone())
+            | Binding("m".into(), Int.clone());
+
+        assert_eq!(infer(&parse("unify n m").unwrap(), &Gamma), Ok(Int));
+    }
+
+    #[test]
+    #[allow(nonstandard_style)]
+    fn test_unify_distinct_types() {
+        let Unifier = Poly::new(
+            ["x"],
+            Mono::arrow(Mono::var("x"), Mono::arrow(Mono::var("x"), Mono::var("x"))),
+        );
+        let Int = Poly::mono(Mono::nullary("Int"));
+        let String = Poly::mono(Mono::nullary("String"));
+
+        let Gamma =
+            Ctxt::new() | Binding("unify".into(), Unifier) | Binding("n".into(), Int) | Binding("s".into(), String);
+
+        assert!(matches!(
+            infer(&parse("unify n s").unwrap(), &Gamma),
+            Err(InferenceError::ImpossibleUnification(..))
+        ));
+    }
+
+    #[test]
+    fn test_apply() {
+        assert_eq!(
+            infer(&parse("lambda f . lambda x. f x").unwrap(), &EMPTY),
+            Ok(Poly::new(
+                ["a", "b"],
+                Mono::arrow(
+                    Mono::arrow(Mono::var("a"), Mono::var("b")),
+                    Mono::arrow(Mono::var("a"), Mono::var("b"))
+                )
+            ))
+        )
+    }
+
+    #[test]
+    fn test_apply_2() {
+        assert_eq!(
+            infer(&parse("lambda f . lambda x. x f").unwrap(), &EMPTY),
+            Ok(Poly::new(
+                ["a", "b"],
+                Mono::arrow(
+                    Mono::var("a"),
+                    Mono::arrow(Mono::arrow(Mono::var("a"), Mono::var("b")), Mono::var("b"))
+                )
+            ))
+        )
+    }
+
+    #[test]
+    fn test_concat() {
+        assert_eq!(
+            infer(&parse("lambda f . lambda g . lambda x . f (g x)").unwrap(), &EMPTY),
+            Ok(Poly::new(
+                ["a", "b", "c"],
+                Mono::arrow(
+                    Mono::arrow(Mono::var("b"), Mono::var("c")),
+                    Mono::arrow(
+                        Mono::arrow(Mono::var("a"), Mono::var("b")),
+                        Mono::arrow(Mono::var("a"), Mono::var("c"))
+                    )
+                )
+            ))
+        )
+    }
+
+    #[test]
+    #[allow(nonstandard_style)]
+    fn test_specialize_let() {
+        let Int = Poly::mono(Mono::nullary("Int"));
+
+        let Gamma = Ctxt::new() | Binding("n".into(), Int);
+
+        assert_eq!(
+            infer(&parse("let id = lambda x . x in id n").unwrap(), &Gamma),
+            Ok(Poly::mono(Mono::nullary("Int")))
+        );
+    }
+
+    #[test]
+    fn test_recursive_unification() {
+        assert!(matches!(
+            infer(&parse("lambda x . x x").unwrap(), &EMPTY),
+            Err(InferenceError::RecursiveType(..))
+        ));
     }
 }

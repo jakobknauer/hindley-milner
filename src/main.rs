@@ -14,16 +14,13 @@ use crate::{
 #[allow(nonstandard_style)]
 fn main() {
     let int = Mono::nullary("Int");
-    let Gamma = &Ctxt::new()
+    let Gamma = Ctxt::new()
         | Binding(
             "plus".to_string(),
             Poly::mono(Mono::arrow(int.clone(), Mono::arrow(int.clone(), int))),
         );
 
     let text = "let double = lambda x . plus x x in lambda n . double (double n)";
-
-    // let text = "lambda f . lambda x. f x";
-    // let Gamma = Ctxt::new();
 
     match parse::parse(text) {
         Err(ParseError::UnexpectedToken { unexpected, expected }) => {
