@@ -108,7 +108,7 @@ impl<I: Iterator<Item = Token>> Parser<I> {
 
         let mut e = self.parse_atomic_expr()?;
 
-        while let Ok(Var(..)) | Ok(LParen) = self.current() {
+        while let Ok(Var(..) | LParen) = self.current() {
             let arg = self.parse_atomic_expr()?;
             e = Expr::app(e, arg);
         }
@@ -187,7 +187,7 @@ impl<I: Iterator<Item = Token>> Parser<I> {
                 let C = expect_varcap!(self, "a type function");
 
                 let mut taus = Vec::new();
-                while let Ok(Var(..)) | Ok(VarCap(..)) | Ok(LParen) = self.current() {
+                while let Ok(Var(..) | VarCap(..) | LParen) = self.current() {
                     taus.push(self.parse_atomic_mono()?);
                 }
 
