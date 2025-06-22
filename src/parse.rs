@@ -2,13 +2,15 @@ mod token;
 #[macro_use]
 mod macros;
 
-use std::{collections::HashSet, iter::Peekable};
+use std::iter::Peekable;
 
-use crate::{
-    expr::Expr,
-    parse::token::Token,
-    types::{Mono, Poly, TypeVar},
-};
+use crate::{expr::Expr, parse::token::Token};
+
+#[cfg(test)]
+use crate::types::{Mono, Poly, TypeVar};
+
+#[cfg(test)]
+use std::collections::HashSet;
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ParseError {
@@ -25,6 +27,7 @@ pub fn parse(text: &str) -> ParseResult<Expr> {
     Parser::new(tokens).parse_expr()
 }
 
+#[cfg(test)]
 pub fn parse_poly(text: &str) -> ParseResult<Poly> {
     let tokens = token::tokenize(text)?;
     Parser::new(tokens).parse_poly()
@@ -57,6 +60,7 @@ impl<I: Iterator<Item = Token>> Parser<I> {
         }
     }
 
+    #[cfg(test)]
     fn parse_poly(mut self) -> ParseResult<Poly> {
         let result = self.parse_poly_internal()?;
         if self.current().is_err() {
@@ -138,6 +142,7 @@ impl<I: Iterator<Item = Token>> Parser<I> {
         }
     }
 
+    #[cfg(test)]
     fn parse_poly_internal(&mut self) -> ParseResult<Poly> {
         use Token::*;
 
@@ -164,6 +169,7 @@ impl<I: Iterator<Item = Token>> Parser<I> {
         }
     }
 
+    #[cfg(test)]
     fn parse_mono(&mut self) -> ParseResult<Mono> {
         use Token::*;
 
@@ -179,6 +185,7 @@ impl<I: Iterator<Item = Token>> Parser<I> {
     }
 
     #[allow(nonstandard_style)]
+    #[cfg(test)]
     fn parse_mono_arrow_arg(&mut self) -> ParseResult<Mono> {
         use Token::*;
 
@@ -198,6 +205,7 @@ impl<I: Iterator<Item = Token>> Parser<I> {
         }
     }
 
+    #[cfg(test)]
     fn parse_atomic_mono(&mut self) -> ParseResult<Mono> {
         use Token::*;
 

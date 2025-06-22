@@ -22,6 +22,7 @@ impl Mono {
     }
 
     #[allow(nonstandard_style)]
+    #[cfg(test)]
     pub fn nullary(C: impl Into<TypeFunc>) -> Mono {
         Mono::App(C.into(), Vec::new())
     }

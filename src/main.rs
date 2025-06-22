@@ -4,19 +4,35 @@ mod expr;
 mod parse;
 mod types;
 
+use std::io::{self, Write};
+
 use crate::{
-    algorithm_j::InferenceError,
+    algorithm_j::{InferenceError, infer},
     ctxt::Ctxt,
-    parse::{ParseError, parse_poly},
+    parse::{ParseError, parse},
 };
 
-#[allow(nonstandard_style)]
 fn main() {
-    let Gamma = Ctxt::new().bind("plus", parse_poly("Int to Int to Int").unwrap());
+    loop {
+        print!(">>> ");
+        let _ = io::stdout().flush();
 
-    let text = "let double = lambda x . plus x x in lambda n . double (double n)";
+        let mut text = String::new();
+        io::stdin().read_line(&mut text).unwrap();
 
-    match parse::parse(text) {
+        if text.trim().is_empty() {
+            break;
+        }
+
+        try_infer(&text);
+    }
+}
+
+#[allow(nonstandard_style)]
+fn try_infer(text: &str) {
+    let Gamma = Ctxt::new();
+
+    match parse(text) {
         Err(ParseError::UnexpectedToken { unexpected, expected }) => {
             println!("Unexpected token of type {unexpected:?}, expected {expected} instead.")
         }
@@ -24,7 +40,7 @@ fn main() {
         Err(ParseError::TrailingTokens) => println!("Parsing failed: Extra tokens at end of input."),
         Err(ParseError::TokenizerError(msg)) => println!("Parsing failed: Tokenization failed: '{msg}'."),
 
-        Ok(e) => match algorithm_j::infer(&e, &Gamma) {
+        Ok(e) => match infer(&e, &Gamma) {
             Err(InferenceError::UnknownVar(x)) => {
                 println!("Type inference failed: Encountered unknown variable during inference: '{x}'.")
             }
