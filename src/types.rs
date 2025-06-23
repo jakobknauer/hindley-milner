@@ -66,6 +66,11 @@ impl Mono {
             Mono::App(_, taus) => taus.iter().any(|tau| tau.occurs(alpha)),
         }
     }
+
+    #[allow(nonstandard_style)]
+    fn is_arrow(&self) -> bool {
+        matches!(self, Mono::App(C, _) if C == ARROW)
+    }
 }
 
 impl Poly {
@@ -93,18 +98,26 @@ impl std::fmt::Display for Mono {
         match self {
             Mono::Var(alpha) => write!(f, "{}", alpha),
             Mono::App(C, taus) if C == ARROW => {
-                assert!(taus.len() == 2);
-                write!(f, "({} {} {})", taus[0], ARROW, taus[1])
-            }
-            Mono::App(C, taus) if taus.len() == 0 => {
-                write!(f, "{}", C)
+                let [tau1, tau2] = &taus[..] else { panic!() };
+
+                if tau1.is_arrow() {
+                    write!(f, "({})", tau1)?
+                } else {
+                    write!(f, "{}", tau1)?
+                }
+
+                write!(f, " → {}", tau2)
             }
             Mono::App(C, taus) => {
-                write!(f, "({}", C)?;
+                write!(f, "{}", C)?;
                 for tau in taus {
-                    write!(f, " {}", tau)?;
+                    if tau.is_arrow() {
+                        write!(f, " ({})", tau)?
+                    } else {
+                        write!(f, " {}", tau)?
+                    }
                 }
-                write!(f, ")")
+                Ok(())
             }
         }
     }

@@ -24,13 +24,38 @@ impl Expr {
     pub fn r#let(x: impl Into<String>, e1: Expr, e2: Expr) -> Expr {
         Expr::Let(x.into(), Box::new(e1), Box::new(e2))
     }
+
+    pub fn is_closed(&self) -> bool {
+        match self {
+            Expr::Var(..) | Expr::App(..) => true,
+            Expr::Abs(..) | Expr::Let(..) => false,
+        }
+    }
+
+    pub fn is_var(&self) -> bool {
+        matches!(self, Self::Var(..))
+    }
 }
 
 impl std::fmt::Display for Expr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Expr::Var(x) => write!(f, "{}", x),
-            Expr::App(e1, e2) => write!(f, "({} {})", e1, e2),
+            Expr::App(e1, e2) => {
+                if e1.is_closed() {
+                    write!(f, "{}", e1)?
+                } else {
+                    write!(f, "({})", e1)?
+                }
+
+                write!(f, " ")?;
+
+                if e2.is_var() {
+                    write!(f, "{}", e2)
+                } else {
+                    write!(f, "({})", e2)
+                }
+            }
             Expr::Abs(x, e) => write!(f, "λ{} . {}", x, e),
             Expr::Let(x, e1, e2) => write!(f, "let {} = {} in {}", x, e1, e2),
         }
