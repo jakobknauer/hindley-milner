@@ -4,7 +4,7 @@ mod expr;
 mod parse;
 mod types;
 
-use std::io::{self, Write};
+use std::io::{Write, stdin, stdout};
 
 use crate::{
     algorithm_j::{InferenceError, infer},
@@ -15,10 +15,10 @@ use crate::{
 fn main() {
     loop {
         print!(">>> ");
-        let _ = io::stdout().flush();
+        stdout().flush().unwrap();
 
         let mut text = String::new();
-        io::stdin().read_line(&mut text).unwrap();
+        stdin().read_line(&mut text).unwrap();
 
         if text.trim().is_empty() {
             break;
@@ -51,7 +51,7 @@ fn try_infer(text: &str) {
                 println!("Type inference failed: Unifying '{tau}' and '{alpha}' would create recursive type.")
             }
 
-            Ok(sigma) => println!("{Gamma} ⊢ {e} : {sigma}"),
+            Ok(sigma) => println!("⊢ {e} : {sigma}"),
         },
     }
 }
